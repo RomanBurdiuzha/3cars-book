@@ -27,7 +27,7 @@ interface TouchPosition {
  * });
  */
 export function useSwipeGesture<T extends HTMLElement>(
-  elementRef: RefObject<T>,
+  elementRef: RefObject<T | null>,
   config: SwipeConfig
 ) {
   const {

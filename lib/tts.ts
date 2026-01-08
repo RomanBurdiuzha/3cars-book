@@ -68,7 +68,7 @@ export async function generateAudio(
       const parts = response.candidates[0].content.parts;
 
       // Find the audio part specifically
-      const audioPart = parts.find(p => p.inlineData && p.inlineData.mimeType.includes('audio'));
+      const audioPart = parts.find(p => p.inlineData && p.inlineData.mimeType?.includes('audio'));
       const base64Audio = audioPart?.inlineData?.data;
 
       if (!base64Audio) {
