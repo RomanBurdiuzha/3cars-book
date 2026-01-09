@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { Chapter } from '@/lib/story';
 import { getHotspotsForChapter } from '@/lib/hotspots';
 import { getChapterDialogues } from '@/lib/hotspot-dialogues';
@@ -19,6 +19,7 @@ export default function BookPage({ chapter, childName }: BookPageProps) {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [audioKey, setAudioKey] = useState(0);
   const [showSparkle, setShowSparkle] = useState<{ x: number; y: number } | null>(null);
+  const [isTextExpanded, setIsTextExpanded] = useState(false);
   const hotspots = getHotspotsForChapter(chapter.id);
 
   const displayContent = childName ? chapter.content : chapter.content;
@@ -118,9 +119,9 @@ export default function BookPage({ chapter, childName }: BookPageProps) {
 
   return (
     <div className="h-full p-2 sm:p-3 md:p-4 lg:p-5 flex flex-col overflow-hidden">
-      {/* Image Section */}
-      <div className="flex-1 flex flex-col gap-2 md:gap-3 min-h-0 overflow-hidden">
-        <div className="flex items-center justify-center flex-1 min-h-0">
+      {/* Image Section - Audio-first: Takes 68% of viewport */}
+      <div className="h-[68vh] flex flex-col gap-2 md:gap-3 overflow-hidden flex-shrink-0">
+        <div className="flex items-center justify-center h-full">
           <div
             className="relative w-full h-full max-h-full rounded-lg md:rounded-xl overflow-hidden shadow-lg cursor-pointer group"
             onClick={handleImageClick}
@@ -159,37 +160,57 @@ export default function BookPage({ chapter, childName }: BookPageProps) {
           </div>
         </div>
 
-        {/* Text Section */}
-        <div className="flex flex-col justify-start space-y-1 sm:space-y-1.5 md:space-y-2 overflow-y-auto flex-shrink-0 max-h-[35vh] sm:max-h-[30vh]">
-          {/* Chapter Title */}
-          <h2 className="font-serif text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-foreground border-b-2 border-accent pb-1">
-            {chapter.title}
-          </h2>
-
-          {/* Story Text */}
-          <p className="font-serif text-xs sm:text-sm md:text-base leading-relaxed text-foreground whitespace-pre-line">
-            {displayContent}
-          </p>
-
-          {/* Chapter Badge */}
-          <div className="flex items-center gap-1.5 sm:gap-2 pt-0.5 sm:pt-1">
-            <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-bold shadow-sm">
-              Розділ {chapter.id + 1}
-            </div>
-            <div className="text-xl sm:text-2xl md:text-3xl">
-              {chapter.id === 0 && '🚔'}
-              {chapter.id === 1 && '🚔'}
-              {chapter.id === 2 && '🚒'}
-              {chapter.id === 3 && '🚑'}
-              {chapter.id >= 4 && '⭐'}
-            </div>
+        {/* Text Section - Collapsible, minimized by default */}
+        <div className="flex flex-col flex-shrink-0">
+          {/* Header with Title and Expand Button */}
+          <div className="flex items-center justify-between gap-2 border-b-2 border-accent pb-1">
+            <h2 className="font-serif text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-foreground">
+              {chapter.title}
+            </h2>
+            <button
+              onClick={() => setIsTextExpanded(!isTextExpanded)}
+              className="flex items-center gap-1 px-2 sm:px-3 py-1 text-xs sm:text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              aria-label={isTextExpanded ? 'Сховати текст' : 'Показати текст'}
+            >
+              <span className="hidden sm:inline">{isTextExpanded ? 'Сховати' : 'Читати текст'}</span>
+              <span className="sm:hidden">{isTextExpanded ? 'Сховати' : 'Текст'}</span>
+              {isTextExpanded ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
           </div>
 
-          {/* Interactive Hint */}
-          {hotspots.length > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-0.5">
-              <Sparkles className="w-3 h-3 text-accent flex-shrink-0" />
-              <span className="leading-tight">Натискайте на картинку, щоб почути звуки!</span>
+          {/* Expandable Content */}
+          {isTextExpanded && (
+            <div className="flex flex-col space-y-1 sm:space-y-1.5 md:space-y-2 overflow-y-auto max-h-[20vh] pt-2">
+              {/* Story Text */}
+              <p className="font-serif text-xs sm:text-sm md:text-base leading-relaxed text-foreground whitespace-pre-line">
+                {displayContent}
+              </p>
+
+              {/* Chapter Badge */}
+              <div className="flex items-center gap-1.5 sm:gap-2 pt-0.5 sm:pt-1">
+                <div className="bg-primary text-primary-foreground px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-bold shadow-sm">
+                  Розділ {chapter.id + 1}
+                </div>
+                <div className="text-xl sm:text-2xl md:text-3xl">
+                  {chapter.id === 0 && '🚔'}
+                  {chapter.id === 1 && '🚔'}
+                  {chapter.id === 2 && '🚒'}
+                  {chapter.id === 3 && '🚑'}
+                  {chapter.id >= 4 && '⭐'}
+                </div>
+              </div>
+
+              {/* Interactive Hint */}
+              {hotspots.length > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-0.5">
+                  <Sparkles className="w-3 h-3 text-accent flex-shrink-0" />
+                  <span className="leading-tight">Натискайте на картинку, щоб почути звуки!</span>
+                </div>
+              )}
             </div>
           )}
         </div>

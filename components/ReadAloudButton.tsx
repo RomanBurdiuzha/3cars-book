@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -105,17 +104,17 @@ export default function ReadAloudButton({ chapterId }: ReadAloudButtonProps) {
         variant="secondary"
         onClick={handleGenerateAudio}
         disabled={isGenerating}
-        className="text-base px-8 py-6 shadow-lg"
+        className="text-base px-10 py-8 shadow-2xl min-w-[200px] sm:min-w-[240px]"
       >
         {isGenerating ? (
           <>
-            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-            Генерую озвучку...
+            <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin mr-3" />
+            <span className="text-sm sm:text-base">Генерую озвучку...</span>
           </>
         ) : (
           <>
-            <VolumeX className="w-5 h-5 mr-2" />
-            Згенерувати озвучку
+            <span className="text-4xl mr-3">🎭</span>
+            <span className="text-sm sm:text-base font-semibold">Згенерувати озвучку</span>
           </>
         )}
       </Button>
@@ -128,12 +127,16 @@ export default function ReadAloudButton({ chapterId }: ReadAloudButtonProps) {
       variant={isPlaying ? 'default' : 'secondary'}
       onClick={handlePlayStop}
       className={cn(
-        'text-base px-8 py-6 shadow-lg transition-all',
-        isPlaying && 'animate-pulse'
+        'text-base px-10 py-8 shadow-2xl transition-all min-w-[200px] sm:min-w-[240px] relative',
+        'before:absolute before:inset-0 before:rounded-lg before:transition-all',
+        !isPlaying && 'before:animate-pulse before:bg-primary/10 before:blur-sm',
+        isPlaying && 'animate-pulse ring-2 ring-primary ring-offset-2'
       )}
     >
-      <Volume2 className="w-5 h-5 mr-2" />
-      {isPlaying ? 'Стоп' : 'Читати вголос'}
+      <span className="text-4xl mr-3 relative z-10">🎭</span>
+      <span className="text-sm sm:text-base font-semibold relative z-10">
+        {isPlaying ? 'Стоп' : 'Слухати казку'}
+      </span>
     </Button>
   );
 }
