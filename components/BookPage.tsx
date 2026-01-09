@@ -6,7 +6,6 @@ import { Chapter } from '@/lib/story';
 import { getHotspotsForChapter } from '@/lib/hotspots';
 import { getChapterDialogues } from '@/lib/hotspot-dialogues';
 import ClickableHotspot from './ClickableHotspot';
-import AudioPlayer from './AudioPlayer';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
@@ -16,8 +15,6 @@ interface BookPageProps {
 }
 
 export default function BookPage({ chapter, childName }: BookPageProps) {
-  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const [audioKey, setAudioKey] = useState(0);
   const [showSparkle, setShowSparkle] = useState<{ x: number; y: number } | null>(null);
   const [isTextExpanded, setIsTextExpanded] = useState(false);
   const hotspots = getHotspotsForChapter(chapter.id);
@@ -81,32 +78,6 @@ export default function BookPage({ chapter, childName }: BookPageProps) {
 
     preGenerateDialogues();
   }, [chapter.id, childName]);
-
-  const handleGenerateAudio = async () => {
-    setIsGeneratingAudio(true);
-    try {
-      const response = await fetch('/api/generate-audio', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ chapterId: chapter.id }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setAudioKey((prev) => prev + 1);
-      } else {
-        alert(`Помилка: ${data.error}\n${data.details || ''}`);
-      }
-    } catch (error) {
-      console.error('Failed to generate audio:', error);
-      alert('Не вдалося згенерувати аудіо. Перевірте налаштування API.');
-    } finally {
-      setIsGeneratingAudio(false);
-    }
-  };
 
   const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -219,16 +190,6 @@ export default function BookPage({ chapter, childName }: BookPageProps) {
       {/* Page Number */}
       <div className="pt-1 sm:pt-1.5 md:pt-2 text-center flex-shrink-0">
         <span className="text-xs text-muted-foreground font-medium">- {chapter.id + 1} -</span>
-      </div>
-
-      {/* Hidden Audio Player - controlled from parent */}
-      <div className="hidden">
-        <AudioPlayer
-          key={audioKey}
-          chapterId={chapter.id}
-          onGenerateAudio={handleGenerateAudio}
-          isGenerating={isGeneratingAudio}
-        />
       </div>
     </div>
   );

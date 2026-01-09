@@ -5,9 +5,31 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Home, BookOpen } from 'lucide-react';
 import { getChapter, getTotalChapters } from '@/lib/story';
 import BookPage from '@/components/BookPage';
-import ReadAloudButton from '@/components/ReadAloudButton';
 import { cn, isIPad, isIOS } from '@/lib/utils';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+
+// Helper function to get vehicle icon for each chapter
+const getChapterVehicleIcon = (chapterId: number): string => {
+  switch (chapterId) {
+    case 0:
+    case 1:
+    case 6:
+    case 7:
+      return '🚔'; // Police car chapters
+    case 2:
+    case 4:
+    case 5:
+      return '🚒'; // Fire truck chapters
+    case 3:
+      return '🚑'; // Ambulance chapter
+    case 8:
+    case 9:
+    case 10:
+      return '🚁'; // Helicopter chapters
+    default:
+      return '🚗'; // Generic car
+  }
+};
 
 export default function BookReader() {
   const router = useRouter();
@@ -17,6 +39,11 @@ export default function BookReader() {
   const [flipDirection, setFlipDirection] = useState<'left' | 'right'>('right');
   const [isIPadDevice, setIsIPadDevice] = useState(false);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [hasAudio, setHasAudio] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(true);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -88,6 +115,82 @@ export default function BookReader() {
     minSwipeVelocity: 0.3,
   });
 
+  // Check if audio exists when chapter changes
+  useEffect(() => {
+    // Stop any playing audio when chapter changes
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setIsPlaying(false);
+    }
+
+    const checkAudio = async () => {
+      setIsLoadingAudio(true);
+      try {
+        const response = await fetch(`/audio/chapters/chapter-${currentPage}.wav`, {
+          method: 'HEAD',
+        });
+        setHasAudio(response.ok);
+      } catch {
+        setHasAudio(false);
+      } finally {
+        setIsLoadingAudio(false);
+      }
+    };
+
+    checkAudio();
+  }, [currentPage]);
+
+  const handlePlayStop = () => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(`/audio/chapters/chapter-${currentPage}.wav`);
+
+      audioRef.current.onended = () => {
+        setIsPlaying(false);
+      };
+
+      audioRef.current.onerror = () => {
+        setIsPlaying(false);
+        setHasAudio(false);
+      };
+    }
+
+    if (isPlaying) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handleGenerateAudio = async () => {
+    setIsGeneratingAudio(true);
+    try {
+      const response = await fetch('/api/generate-audio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chapterId: currentPage }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setHasAudio(true);
+      } else {
+        alert(`Помилка: ${data.error}\n${data.details || ''}`);
+      }
+    } catch (error) {
+      console.error('Failed to generate audio:', error);
+      alert('Не вдалося згенерувати аудіо. Перевірте налаштування API.');
+    } finally {
+      setIsGeneratingAudio(false);
+    }
+  };
+
   const goHome = () => {
     router.push('/');
   };
@@ -143,6 +246,69 @@ export default function BookReader() {
               <div className="absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-black/3 to-transparent pointer-events-none" />
             </div>
           </div>
+
+          {/* Audio Button - Positioned at bottom center of book with road scene */}
+          {!isLoadingAudio && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 w-full max-w-md">
+              {/* Road scene container */}
+              <div className="relative flex flex-col items-center">
+                {/* Trees and bushes on top */}
+                <div className="flex justify-between w-full px-4 mb-1">
+                  <span className="text-3xl">🌳</span>
+                  <span className="text-2xl">🌲</span>
+                  <span className="text-2xl">🌳</span>
+                  <span className="text-3xl">🌲</span>
+                </div>
+
+                {/* Road with vehicle */}
+                <div className="relative w-full h-24 bg-gradient-to-b from-gray-500 via-gray-600 to-gray-500 rounded-lg overflow-hidden">
+                  {/* Road markings */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-full h-1 border-t-4 border-dashed border-yellow-200/80" />
+                  </div>
+
+                  {/* Grass edges */}
+                  <div className="absolute -top-2 left-0 right-0 h-3 bg-green-500/40 blur-sm" />
+                  <div className="absolute -bottom-2 left-0 right-0 h-3 bg-green-500/40 blur-sm" />
+
+                  {/* Vehicle button */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <button
+                      onClick={hasAudio ? handlePlayStop : handleGenerateAudio}
+                      disabled={isGeneratingAudio}
+                      className={cn(
+                        "flex items-center justify-center",
+                        "transition-all duration-300",
+                        "hover:scale-110 active:scale-95",
+                        !isPlaying && !isGeneratingAudio && "animate-pulse"
+                      )}
+                      aria-label={hasAudio ? 'Слухати казку' : 'Згенерувати озвучку'}
+                    >
+                      {isGeneratingAudio ? (
+                        <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <span className={cn(
+                          "text-7xl cursor-pointer drop-shadow-lg",
+                          isPlaying && "animate-[drive_2s_ease-in-out_infinite]"
+                        )}>
+                          {getChapterVehicleIcon(currentPage)}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bushes at the bottom */}
+                <div className="flex justify-between w-full px-2 mt-1">
+                  <span className="text-xl">🌿</span>
+                  <span className="text-2xl">🪴</span>
+                  <span className="text-xl">🌿</span>
+                  <span className="text-2xl">🪴</span>
+                  <span className="text-xl">🌿</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Controls - fixed height footer */}
@@ -247,26 +413,14 @@ export default function BookReader() {
               </button>
             )}
 
-            {/* Audio Button */}
-            {!isIPadDevice && (
-              <div className="hidden sm:flex">
-                <ReadAloudButton chapterId={currentPage} />
-              </div>
-            )}
           </div>
 
-          {/* Right: Progress or Audio for iPad */}
-          {isIPadDevice ? (
-            <div className="flex">
-              <ReadAloudButton chapterId={currentPage} />
+          {/* Right: Progress */}
+          <div className="hidden xl:flex items-center gap-1 sm:gap-2">
+            <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-accent/20 text-accent-foreground rounded-full text-xs font-medium whitespace-nowrap">
+              {Math.round(((currentPage + 1) / totalPages) * 100)}%
             </div>
-          ) : (
-            <div className="hidden xl:flex items-center gap-1 sm:gap-2">
-              <div className="px-2 sm:px-3 py-1 sm:py-1.5 bg-accent/20 text-accent-foreground rounded-full text-xs font-medium whitespace-nowrap">
-                {Math.round(((currentPage + 1) / totalPages) * 100)}%
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -322,6 +476,16 @@ export default function BookReader() {
           }
           50% {
             opacity: 1;
+          }
+        }
+
+        /* Drive animation for vehicle icons */
+        @keyframes drive {
+          0%, 100% {
+            transform: translateX(0);
+          }
+          50% {
+            transform: translateX(20px);
           }
         }
       `}</style>
